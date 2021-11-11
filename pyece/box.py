@@ -49,7 +49,7 @@ class Point:
         ]
 
     def numpy(self) -> np.ndarray:
-        return np.array(self.coords)
+        return np.asarray(self.coords, dtype=float)
 
     def __len__(self):
         return len(self._coords)
@@ -134,7 +134,7 @@ class Size:
             raise NotImplementedError
 
     def numpy(self) -> np.ndarray:
-        return np.array(self.sides)
+        return np.asarray(self.sides, dtype=float)
 
     def __len__(self):
         return len(self._sides)
@@ -203,6 +203,14 @@ class Box:
         self._s = sides
 
     @property
+    def distant(self) -> Point:
+        return self.anchor + self.sides
+
+    @property
+    def centre(self) -> Point:
+        return (self.anchor + self.distant) / 2
+
+    @property
     def canvas(self) -> Size:
         return self._c
 
@@ -269,7 +277,7 @@ def area_union(*boxes: Box) -> float:
     assert len(set(box.canvas for box in boxes)) == 1
     split_points = set(
         [box.anchor for box in boxes] +
-        [box.anchor + box.sides for box in boxes]
+        [box.distant for box in boxes]
     )
     unique_boxs = set()
     for box in boxes:
@@ -286,12 +294,16 @@ def map_box_groups(*box_groups: List[Box]) -> Dict[int, List[Box]]:
         elif isinstance(group, Box):
             groups[i].append(group)
         else:
-            print(group, type(group), isinstance(group, Box))
             raise NotImplementedError
     assert len(set(box.canvas for group in groups.values() for box in group))
     return groups
 
-def area_intersection(*box_groups: List[Box]):
+def area_intersection(*box_groups: List[Box]) -> float:
     groups = map_box_groups(*box_groups)
-    # TODO:
-    raise NotImplementedError
+    corners = {
+        p for group in groups.values()
+        for box in group
+        for p in [box.anchor, box.distant]}
+    groups = {i: {b for box in group for b in box.split(*corners)} for i, group in groups.items()}
+    intersection = set.intersection(*list(groups.values()))
+    return np.sum([box.area for box in intersection])

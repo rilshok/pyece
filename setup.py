@@ -35,7 +35,6 @@ setup(
         'Development Status :: 1 - Planning',
         'Topic :: Scientific/Engineering :: Image Recognition',
         'Topic :: Scientific/Engineering :: Visualization',
-        'Topic :: Software Development :: Version Control :: Git',
 	],
     python_requires='>=3.6',
 )

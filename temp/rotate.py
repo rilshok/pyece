@@ -18,7 +18,10 @@ def rotate(
     return turning_point
 
 
-def get_rotate_matrix(dim: int, angle: tp.Iterable[float]) -> np.ndarray:
+def get_rotate_matrix(
+        dim: int,
+        angle: tp.Iterable[float]
+) -> np.ndarray:
     if dim == 2:
         return get_rotate_matrix_2d(angle[0])
     elif dim == 3:
@@ -29,7 +32,7 @@ def get_rotate_matrix(dim: int, angle: tp.Iterable[float]) -> np.ndarray:
 
 def get_rotate_matrix_2d(
         angle: float
-):
+) -> np.ndarray:
     return np.array([
         [np.cos(angle), -np.sin(angle)],
         [np.sin(angle), np.cos(angle)]
@@ -38,7 +41,7 @@ def get_rotate_matrix_2d(
 
 def get_rotate_matrix_3d(
         angle: tp.Iterable[float]
-):
+) -> np.ndarray:
     rotate_matrix_x = np.array([
         [1, 0, 0],
         [0, np.cos(angle[0]), -np.sin(angle[0])],

@@ -6,11 +6,12 @@ import numpy as np
 Point = Sequence[Union[float, int]]
 LikeCorners = Union[np.ndarray, Sequence[Point]]
 
+
 class Corners:
     def __init__(self, corners: LikeCorners):
         corners = np.asarray(corners)
         n, p = corners.shape
-        if 2**p != n:
+        if 2 ** p != n:
             msg = ""
             raise ValueError(msg)
         self._corners = np.asarray(corners)
@@ -25,14 +26,17 @@ class Corners:
         return Corners(corners)
 
     @property
-    def dim(self):
+    def dim(self) -> int:
         return self._corners.shape[1]
 
     @property
-    def сentre(self):
+    def centre(self) -> np.ndarray:
         return self._corners.mean(0)
 
     def __getitem__(self, index):
         pass
-    # def __repr__(self):
-    #     return
+
+    def __repr__(self) -> str:
+        d = self.dim
+        c = tuple(self.centre)
+        return f"Corners{d}d[сentre={c}]"

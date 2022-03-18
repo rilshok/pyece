@@ -18,14 +18,15 @@ class Corners:
     def copy(self) -> "Corners":
         return Corners(self._corners)
 
-    def dim(self):
-        return self._corners.shape[1]
-
     @staticmethod
     def product(shape: Tuple) -> "Corners":
         masks = list(product((False, True), repeat=len(shape)))
         corners = [[s if c else 0 for c, s in zip(mask, shape)] for mask in masks]
         return Corners(corners)
+
+    @property
+    def dim(self):
+        return self._corners.shape[1]
 
     @property
     def сentre(self):

@@ -1,13 +1,16 @@
+from abc import ABC, abstractclassmethod, abstractmethod
 from itertools import product
 from typing import Sequence, Tuple, Union
 
 import numpy as np
 
+from .primitive import Property
+
 Point = Sequence[Union[float, int]]
 LikeCorners = Union[np.ndarray, Sequence[Point]]
 
 
-class Corners:
+class Corners(Property):
     def __init__(self, corners: LikeCorners):
         corners = np.asarray(corners)
         n, p = corners.shape
@@ -15,6 +18,9 @@ class Corners:
             msg = ""
             raise ValueError(msg)
         self._corners = np.asarray(corners)
+
+    def get(self):
+        return self._corners
 
     def copy(self) -> "Corners":
         return Corners(self._corners)

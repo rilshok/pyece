@@ -99,13 +99,33 @@ class PointCloud(Point):
         super().__init__([as_point(p) for p in points])
 
 
-class PointTransform(ABC):
+LikePointCloud = Union[PointCloud, Sequence[LikePoint]]
+
+
+def as_pointcloud(value: LikePointCloud) -> PointCloud:
+    if isinstance(value, PointCloud):
+        return value
+    return PointCloud(value)
+
+
+class Transform(ABC):
     @abstractmethod
-    def transform(self, point: np.ndarray) -> np.ndarray:
+    def transform(self, obj) -> Any:
+        return NotImplemented
+
+    @abstractmethod
+    def __call__(self, obj) -> Any:
+        return NotImplemented
+
+
+class PointTransform(Transform):
+    @abstractmethod
+    def transform(self, obj: np.ndarray) -> np.ndarray:
         return NotImplemented
 
     def __call__(self, obj: LikePoint) -> Point:
         p = as_point(obj).value
+        # assert p.ndim == 1
         t = self.transform(p)
         return as_point(t)
 
@@ -114,8 +134,8 @@ class PointShift(PointTransform):
     def __init__(self, shift: LikePoint):
         self._shift = as_point(shift)
 
-    def transform(self, point: np.ndarray) -> np.ndarray:
-        return point + self._shift.value
+    def transform(self, obj: np.ndarray) -> np.ndarray:
+        return obj + self._shift.value
 
 
 from .math.rotate import rotate
@@ -126,7 +146,37 @@ class PointRotate(PointTransform):
         self._pivot = as_point(pivot)
         self._angle = as_property(angle)
 
-    def transform(self, point: np.ndarray) -> np.ndarray:
+    def transform(self, obj: np.ndarray) -> np.ndarray:
         pivot = self._pivot.value
         angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
-        return rotate(pivot, point, angle)
+        return rotate(pivot, obj, angle)
+
+
+class PointCloudTransform(Transform):
+    def __init__(self, transform: PointTransform):
+        assert isinstance(transform, PointTransform)
+        self._transform = transform
+
+    def transform(self, obj: np.ndarray) -> np.ndarray:
+        result = list()
+        for point in obj:
+            r = self._transform(point).value
+            result.append(r)
+        return np.asarray(result)
+
+    def __call__(self, obj: LikePointCloud) -> PointCloud:
+        p = as_pointcloud(obj).value
+        t = self.transform(p)
+        return as_pointcloud(t)
+
+
+class PointCloudRotate(PointCloudTransform):
+    def __init__(self, angle: LikeProperty):
+        self._angle = as_property(angle)
+        self._transform = None
+
+    def transform(self, obj: np.ndarray) -> np.ndarray:
+        pivot = obj.mean(0)
+        angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
+        self._transform = PointRotate(pivot, angle)
+        return super().transform(obj)

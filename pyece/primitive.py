@@ -1,8 +1,9 @@
-import types
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Iterable, Sequence, Union
 
 import numpy as np
+
+from .math.rotate import rotate
 
 LikeProperty = Union["Property", float, int, str]
 PropertySequence = Sequence[LikeProperty]
@@ -16,6 +17,10 @@ class Property(ABC):
     @property
     def value(self) -> Any:
         return self.get()
+
+    def transform(self, operation: "Operation", **kwargs) -> "Property":
+        assert isinstance(operation, Operation)
+        return operation(**kwargs)(self)
 
 
 class ConstantProperty(Property):
@@ -98,6 +103,16 @@ class PointCloud(Point):
     def __init__(self, points: Sequence[LikePoint]):
         super().__init__([as_point(p) for p in points])
 
+    def transform(self, operation: "Operation", **kwargs) -> "Point":
+        if isinstance(operation, PointOperation):
+            points = self.value
+            if isinstance(operation, (PointRotate, PointInflation)):
+                if operation._pivot is None:
+                    kwargs["pivot"] = points.mean(0)
+            fn = operation(**kwargs)
+            return PointCloud(map(fn, points))
+        return super().transform(operation, **kwargs)
+
 
 LikePointCloud = Union[PointCloud, Sequence[LikePoint]]
 
@@ -108,75 +123,88 @@ def as_pointcloud(value: LikePointCloud) -> PointCloud:
     return PointCloud(value)
 
 
-class Transform(ABC):
-    @abstractmethod
-    def transform(self, obj) -> Any:
-        return NotImplemented
+class Operation:
+    def __call__(self, **params) -> Callable:
+        def inner(obj):
+            self.operation(obj, **params)
+
+        return inner
 
     @abstractmethod
-    def __call__(self, obj) -> Any:
+    def operation(self, obj, **params) -> Any:
         return NotImplemented
 
 
-class PointTransform(Transform):
+class PointOperation(Operation):
+    def __call__(self, **params) -> Callable[[LikePoint], Point]:
+        def inner(point: LikePoint):
+            point = as_point(point).value
+            value = self.operation(point, **params)
+            return Point(value)
+
+        return inner
+
     @abstractmethod
-    def transform(self, obj: np.ndarray) -> np.ndarray:
+    def operation(self, obj: np.ndarray, **params) -> np.ndarray:
         return NotImplemented
 
-    def __call__(self, obj: LikePoint) -> Point:
-        p = as_point(obj).value
-        # assert p.ndim == 1
-        t = self.transform(p)
-        return as_point(t)
 
-
-class PointShift(PointTransform):
+class PointShift(PointOperation):
     def __init__(self, shift: LikePoint):
         self._shift = as_point(shift)
 
-    def transform(self, obj: np.ndarray) -> np.ndarray:
-        return obj + self._shift.value
+    def __call__(self) -> Callable[[LikePoint], Point]:
+        shift = self._shift.value
+        return super().__call__(shift=shift)
+
+    def operation(self, obj: np.ndarray, shift: np.ndarray) -> np.ndarray:
+        return obj + shift
 
 
-from .math.rotate import rotate
-
-
-class PointRotate(PointTransform):
-    def __init__(self, pivot: LikePoint, angle: LikeProperty):
-        self._pivot = as_point(pivot)
+class PointRotate(PointOperation):
+    def __init__(self, angle: LikeProperty, pivot: LikePoint = None):
         self._angle = as_property(angle)
+        self._pivot = None if pivot is None else as_point(pivot)
 
-    def transform(self, obj: np.ndarray) -> np.ndarray:
-        pivot = self._pivot.value
+    def __call__(self, pivot: LikePoint = None) -> Callable[[LikePoint], Point]:
         angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
+        if pivot is not None:
+            pivot = as_point(pivot).value
+        else:
+            pivot = self._pivot.value
+        return super().__call__(pivot=pivot, angle=angle)
+
+    def operation(
+        self, obj: np.ndarray, pivot: np.ndarray, angle: np.ndarray
+    ) -> np.ndarray:
         return rotate(pivot, obj, angle)
 
 
-class PointCloudTransform(Transform):
-    def __init__(self, transform: PointTransform):
-        assert isinstance(transform, PointTransform)
-        self._transform = transform
+class PointInflation(PointOperation):
+    def __init__(self, factor: LikeProperty, pivot: LikePoint = None):
+        self._factor = as_property(factor)
+        self._pivot = None if pivot is None else as_point(pivot)
 
-    def transform(self, obj: np.ndarray) -> np.ndarray:
-        result = list()
-        for point in obj:
-            r = self._transform(point).value
-            result.append(r)
-        return np.asarray(result)
+    def __call__(self, pivot: LikePoint = None) -> Callable[[LikePoint], Point]:
+        factor = self._factor.value
+        if pivot is not None:
+            pivot = as_point(pivot).value
+        else:
+            pivot = self._pivot.value
+        return super().__call__(pivot=pivot, factor=factor)
 
-    def __call__(self, obj: LikePointCloud) -> PointCloud:
-        p = as_pointcloud(obj).value
-        t = self.transform(p)
-        return as_pointcloud(t)
+    def operation(
+        self, obj: np.ndarray, pivot: np.ndarray, factor: np.ndarray
+    ) -> np.ndarray:
+        return pivot + (obj - pivot) * factor
 
 
-class PointCloudRotate(PointCloudTransform):
-    def __init__(self, angle: LikeProperty):
-        self._angle = as_property(angle)
-        self._transform = None
+class Transformator:
+    def __init__(self, *operations: Operation):
+        assert all([isinstance(op, Operation) for op in operations])
+        self._operations = operations
 
-    def transform(self, obj: np.ndarray) -> np.ndarray:
-        pivot = obj.mean(0)
-        angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
-        self._transform = PointRotate(pivot, angle)
-        return super().transform(obj)
+    def __call__(self, instance: Property) -> Property:
+        for op in self._operations:
+            instance = instance.transform(op)
+        return instance

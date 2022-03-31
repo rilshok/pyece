@@ -81,6 +81,12 @@ class RandomUniform(Property):
     def get(self):
         return np.random.uniform(self._low, self._high)
 
+class RandomChoice(Property):
+    def __init__(self, items):
+        self._items = list(items)
+
+    def get(self):
+        return np.random.choice(self._items)
 
 class Point(Property):
     def __init__(self, point: PropertySequence):

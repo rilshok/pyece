@@ -1,6 +1,6 @@
 from pytest import mark
 import pytest
-from pyece.corners import Corners
+from pyece import Corners
 
 
 @mark.parametrize(

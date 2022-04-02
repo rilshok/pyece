@@ -1,4 +1,4 @@
-__all__ = "rotate"
+__all__ = ("rotate",)
 
 from typing import Tuple, Union
 

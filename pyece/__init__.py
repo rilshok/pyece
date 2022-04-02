@@ -1,1 +1,1 @@
-from pyece.box import *
+from .core import *

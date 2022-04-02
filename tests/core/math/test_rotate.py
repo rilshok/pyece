@@ -1,5 +1,5 @@
 import numpy as np
-from pyece.math.rotate import rotate
+from pyece.core.math.rotate import rotate
 
 
 def test_rotate_2d():

@@ -1,7 +1,7 @@
 import numpy as np
+from typing import Tuple
 
-
-def linspace(start, end, count):
+def linspace(start, end, count: int):
     # NOTE: np.linspace works ~ 8 times faster
     start = np.asarray(start)
     end = np.asarray(end)
@@ -10,7 +10,7 @@ def linspace(start, end, count):
 
 
 # TODO: do it asynchronously
-def meshcorners(corners, grid):
+def meshcorners(corners: np.ndarray, grid: Tuple):
     c = len(corners) // 2
     if c == 0:
         return corners[0]
@@ -24,7 +24,7 @@ def cutpatch(data: np.ndarray, corners: np.ndarray, grid: tuple, fill=None):
     mesh = np.asarray(meshcorners(corners, grid)).round()
     idx = np.rollaxis(mesh.astype(int), -1)
     d = idx.shape[0]
-    ring_idx = idx % np.reshape(data.shape[:d], (2, *[1] * d))
+    ring_idx = idx % np.reshape(data.shape[:d], (d, *[1] * d))
     patch = data[tuple(ring_idx)]
     if fill is not None:
         fill_idx = (idx != ring_idx).any(0)

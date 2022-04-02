@@ -6,7 +6,7 @@ import numpy as np
 from .math.rotate import rotate
 
 LikeProperty = Union["Property", float, int, str]
-PropertySequence = Sequence[LikeProperty]
+PropertySequence = Union[Sequence[LikeProperty], np.ndarray]
 
 
 class Property(ABC):
@@ -109,14 +109,14 @@ class PointCloud(Point):
     def __init__(self, points: Sequence[LikePoint]):
         super().__init__([as_point(p) for p in points])
 
-    def transform(self, operation: "Operation", **kwargs) -> "Point":
+    def transform(self, operation: "Operation", **kwargs) -> Property:
         if isinstance(operation, PointOperation):
             points = self.value
             if isinstance(operation, (PointRotate, PointInflation)):
                 if operation._pivot is None:
                     kwargs["pivot"] = points.mean(0)
             fn = operation(**kwargs)
-            return PointCloud(map(fn, points))
+            return PointCloud(tuple(map(fn, points)))
         return super().transform(operation, **kwargs)
 
 
@@ -176,8 +176,10 @@ class PointRotate(PointOperation):
         angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
         if pivot is not None:
             pivot = as_point(pivot).value
-        else:
+        elif self._pivot is not None:
             pivot = self._pivot.value
+        else:
+            raise RuntimeError
         return super().__call__(pivot=pivot, angle=angle)
 
     def operation(
@@ -195,8 +197,10 @@ class PointInflation(PointOperation):
         factor = self._factor.value
         if pivot is not None:
             pivot = as_point(pivot).value
-        else:
+        elif self._pivot is not None:
             pivot = self._pivot.value
+        else:
+            raise RuntimeError
         return super().__call__(pivot=pivot, factor=factor)
 
     def operation(

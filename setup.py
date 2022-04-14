@@ -4,7 +4,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 name = "pyece"
-descriprion = "Tools for working with markup elements"
+description = "Tools for working with markup elements"
 authors = "Elizaveta Dakhova; Vladislav A. Proskurov"
 author_email = "rilshok@pm.me"
 classifiers = [
@@ -28,7 +28,7 @@ with open("requirements.txt", encoding="utf-8") as file:
 
 setup(
     name=name,
-    descriprion=descriprion,
+    description=description,
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",

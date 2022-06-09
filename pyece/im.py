@@ -79,7 +79,7 @@ class ByPatchWrapper:
         **kwargs,
     ) -> np.ndarray:
         shape = np.asarray(data.shape[: self._dim])
-        spacing = np.asarray(spacing or [1.0] * self._dim)
+        spacing = np.asarray([1.0] * self._dim if spacing is None else spacing)
         volume = shape * spacing
         # NOTE: resize data to required spacing
         if not np.all(self._spacing == spacing):
@@ -88,13 +88,16 @@ class ByPatchWrapper:
                 corners=Corners.product(shape).value - 0.5,
                 grid=np.round(volume / self._spacing).astype(int),
             )
+            shape = np.asarray(data.shape[: self._dim])
+            spacing = np.asarray(self._spacing)
+            volume = shape * spacing
         grid = np.asarray(
             grid or self._grid or np.floor((volume / self._volume)),
             dtype="int",
         )
 
         ids = np.asarray(list(itertools.product(*map(range, grid))))
-        shift = self._volume + ((volume - (grid * self._volume)) / (grid - 1))
+        shift = (self._volume + ((volume - (grid * self._volume)) / (grid - 1))) / self._spacing
         shifts = np.round((ids * shift)).astype(int)
 
         wrapped = list()

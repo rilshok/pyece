@@ -11,33 +11,34 @@ __all__ = (
 )
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable, Sequence, Union
 
 import numpy as np
 
-LikeProperty = Union["Property", float, int, str]
-PropertySequence = Union[Sequence[LikeProperty], np.ndarray]
+from .. import typing as tp
+
+LikeProperty = tp.Union["Property", float, int, str]
+PropertySequence = tp.Union[tp.Sequence[LikeProperty], np.ndarray]
 
 
 class Operation(ABC):
-    def __call__(self, **params) -> Callable:
+    def __call__(self, **params) -> tp.Callable:
         def inner(obj):
             self.operation(obj, **params)
 
         return inner
 
     @abstractmethod
-    def operation(self, obj, **params) -> Any:
+    def operation(self, obj, **params) -> tp.Any:
         return NotImplemented
 
 
 class Property(ABC):
     @abstractmethod
-    def get(self) -> Any:
+    def get(self) -> tp.Any:
         return NotImplemented
 
     @property
-    def value(self) -> Any:
+    def value(self) -> tp.Any:
         return self.get()
 
     def transform(self, operation: Operation, **kwargs) -> "Property":
@@ -49,7 +50,7 @@ class Constant(Property):
     def __init__(self, value):
         self._value = value
 
-    def get(self) -> Any:
+    def get(self) -> tp.Any:
         return self._value
 
 
@@ -60,27 +61,27 @@ def as_property(value: LikeProperty) -> Property:
 
 
 class Source(Property):
-    def __init__(self, fn: Callable, *args, **kwargs):
+    def __init__(self, fn: tp.Callable, *args, **kwargs):
         assert callable(fn)
         self._fn = fn
         self._args = args
         self._kwargs = kwargs
 
-    def get(self) -> Any:
+    def get(self) -> tp.Any:
         return self._fn(*self._args, **self._kwargs)
 
 
 class Convert(Source):
-    def __init__(self, p: LikeProperty, fn: Callable, *args, **kwargs):
+    def __init__(self, p: LikeProperty, fn: tp.Callable, *args, **kwargs):
         self._original = as_property(p)
         super().__init__(fn, *args, **kwargs)
 
-    def get(self) -> Any:
+    def get(self) -> tp.Any:
         return self._fn(self._original.value, *self._args, **self._kwargs)
 
 
 class Iter(Property):
-    def __init__(self, seq: Iterable):
+    def __init__(self, seq: tp.Iterable):
         self._source = seq
         self._iter = iter(self._source)
 
@@ -91,7 +92,7 @@ class Iter(Property):
             self._iter = iter(self._source)
             return next(self._iter)
 
-    def get(self) -> Any:
+    def get(self) -> tp.Any:
         return self._next()
 
 

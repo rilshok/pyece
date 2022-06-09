@@ -7,12 +7,14 @@ __all__ = (
 )
 
 from abc import abstractmethod
-from typing import Callable, Union
 
 import numpy as np
 
-from ..math.rotate import rotate
+from .. import typing as tp
+from ..math.rotate import Angle, rotate
 from .base import LikeProperty, Operation, Property, PropertySequence, as_property
+
+LikePoint = tp.Union["Point", PropertySequence, tp.NDArray]
 
 
 class Point(Property):
@@ -23,9 +25,6 @@ class Point(Property):
         return np.asarray([p.value for p in self._point])
 
 
-LikePoint = Union[Point, PropertySequence, np.ndarray]
-
-
 def as_point(value: LikePoint) -> Point:
     if isinstance(value, Point):
         return value
@@ -33,16 +32,16 @@ def as_point(value: LikePoint) -> Point:
 
 
 class PointOperation(Operation):
-    def __call__(self, **params) -> Callable[[LikePoint], Point]:
-        def inner(point: LikePoint):
-            point = as_point(point).value
-            value = self.operation(point, **params)
+    def __call__(self, **params) -> tp.Callable[[LikePoint], Point]:
+        def inner(point: LikePoint) -> Point:
+            point_ = as_point(point).value
+            value = self.operation(point_, **params)
             return Point(value)
 
         return inner
 
     @abstractmethod
-    def operation(self, obj: np.ndarray, **params) -> np.ndarray:
+    def operation(self, obj: tp.NDArray, **params) -> tp.NDArray:
         return NotImplemented
 
 
@@ -50,11 +49,12 @@ class PointShift(PointOperation):
     def __init__(self, shift: LikePoint):
         self._shift = as_point(shift)
 
-    def __call__(self) -> Callable[[LikePoint], Point]:
+    def __call__(self, **params) -> tp.Callable[[LikePoint], Point]:
         shift = self._shift.value
         return super().__call__(shift=shift)
 
-    def operation(self, obj: np.ndarray, shift: np.ndarray) -> np.ndarray:
+    def operation(self, obj: tp.NDArray, **params) -> tp.NDArray:
+        shift: tp.NDArray = params["shift"]
         return obj + shift
 
 
@@ -63,7 +63,8 @@ class PointRotate(PointOperation):
         self._angle = as_property(angle)
         self._pivot = None if pivot is None else as_point(pivot)
 
-    def __call__(self, pivot: LikePoint = None) -> Callable[[LikePoint], Point]:
+    def __call__(self, **params) -> tp.Callable[[LikePoint], Point]:
+        pivot: tp.Optional[LikePoint] = params["pivot"]
         angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
         if pivot is not None:
             pivot = as_point(pivot).value
@@ -73,18 +74,23 @@ class PointRotate(PointOperation):
             raise RuntimeError
         return super().__call__(pivot=pivot, angle=angle)
 
-    def operation(
-        self, obj: np.ndarray, pivot: np.ndarray, angle: np.ndarray
-    ) -> np.ndarray:
+    def operation(self, obj: tp.NDArray, **params) -> tp.NDArray:
+        pivot: tp.NDArray = params["pivot"]
+        angle: Angle = params["angle"]
         return rotate(pivot, obj, angle)
 
 
 class PointInflation(PointOperation):
-    def __init__(self, factor: LikeProperty, pivot: LikePoint = None):
+    def __init__(
+        self,
+        factor: LikeProperty,
+        pivot: LikePoint = None,
+    ):
         self._factor = as_property(factor)
         self._pivot = None if pivot is None else as_point(pivot)
 
-    def __call__(self, pivot: LikePoint = None) -> Callable[[LikePoint], Point]:
+    def __call__(self, **params) -> tp.Callable[[LikePoint], Point]:
+        pivot: LikePoint = (params["pivot"],)
         factor = self._factor.value
         if pivot is not None:
             pivot = as_point(pivot).value
@@ -94,7 +100,7 @@ class PointInflation(PointOperation):
             raise RuntimeError
         return super().__call__(pivot=pivot, factor=factor)
 
-    def operation(
-        self, obj: np.ndarray, pivot: np.ndarray, factor: np.ndarray
-    ) -> np.ndarray:
+    def operation(self, obj: tp.NDArray, **params) -> tp.NDArray:
+        pivot: tp.NDArray = params["pivot"]
+        factor: tp.NDArray = params["factor"]
         return pivot + (obj - pivot) * factor

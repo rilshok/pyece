@@ -4,11 +4,12 @@ __all__ = (
 )
 
 from itertools import product
-from typing import Sequence, Tuple, Union
 
-import numpy as np
-
-from .base import Operation, Property
+from .. import typing as tp
+from .base import (
+    Operation,
+    Property,
+)
 from .point import (
     LikePoint,
     Point,
@@ -20,7 +21,7 @@ from .point import (
 
 
 class PointCloud(Point):
-    def __init__(self, points: Sequence[LikePoint]):
+    def __init__(self, points: tp.Sequence[LikePoint]):
         super().__init__([as_point(p) for p in points])
 
     def transform(self, operation: Operation, **kwargs) -> Property:
@@ -34,7 +35,7 @@ class PointCloud(Point):
         return super().transform(operation, **kwargs)
 
 
-LikePointCloud = Union[PointCloud, Sequence[LikePoint]]
+LikePointCloud = tp.Union[PointCloud, tp.Sequence[LikePoint]]
 
 
 def as_pointcloud(value: LikePointCloud) -> PointCloud:
@@ -44,7 +45,7 @@ def as_pointcloud(value: LikePointCloud) -> PointCloud:
 
 
 class Corners(PointCloud):
-    def get(self) -> np.ndarray:
+    def get(self) -> tp.NDArray:
         corners = super().get()
         n, p = corners.shape
         if 2 ** p != n:
@@ -53,7 +54,8 @@ class Corners(PointCloud):
         return corners
 
     @staticmethod
-    def product(shape: Tuple) -> "Corners":
+    def product(shape: tp.IntTuple) -> "Corners":
+        shape = tuple(shape)
         masks = list(product((False, True), repeat=len(shape)))
         corners = [[s if c else 0 for c, s in zip(mask, shape)] for mask in masks]
         return Corners(corners)

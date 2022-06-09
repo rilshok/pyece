@@ -64,7 +64,7 @@ class PointRotate(PointOperation):
         self._pivot = None if pivot is None else as_point(pivot)
 
     def __call__(self, **params) -> tp.Callable[[LikePoint], Point]:
-        pivot: tp.Optional[LikePoint] = params["pivot"]
+        pivot: LikePoint = params["pivot"]
         angle = np.asarray(self._angle.value).reshape(-1) % (2 * np.pi)
         if pivot is not None:
             pivot = as_point(pivot).value
@@ -90,7 +90,7 @@ class PointInflation(PointOperation):
         self._pivot = None if pivot is None else as_point(pivot)
 
     def __call__(self, **params) -> tp.Callable[[LikePoint], Point]:
-        pivot: LikePoint = (params["pivot"],)
+        pivot: LikePoint = params["pivot"]
         factor = self._factor.value
         if pivot is not None:
             pivot = as_point(pivot).value
